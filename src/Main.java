@@ -1,17 +1,65 @@
-// Press Shift twice to open the Search Everywhere dialog and type `show whitespaces`,
-// then press Enter. You can now see whitespace characters in your code.
+import java.util.Scanner;
+
 public class Main {
     public static void main(String[] args) {
-        // Press Alt+Enter with your caret at the highlighted text to see how
-        // IntelliJ IDEA suggests fixing it.
-        System.out.printf("Heh!");
+        Scanner scanner = new Scanner(System.in);
 
-        // Press Shift+F10 or click the green arrow button in the gutter to run the code.
-        for (int i = 1; i <= 7; i++) {
+        System.out.println("Enter 'min' for minimization or 'max' for maximization: ");
+        String problemType = scanner.nextLine();
 
-            // Press Shift+F9 to start debugging your code. We have set one breakpoint
-            // for you, but you can always add more by pressing Ctrl+F8.
-            System.out.println("i = " + (i+1));
+        System.out.println("Enter the number of variables: ");
+        int n = scanner.nextInt();
+
+        double[] C = new double[n];
+        System.out.println("Enter a vector of the coefficients of the objective function:");
+        for (int i = 0; i < n; i++) {
+            C[i] = scanner.nextDouble();
         }
+
+        System.out.println("Enter the number of constraints:");
+        int m = scanner.nextInt();
+
+        double[][] A = new double[m][n];
+        System.out.println("Enter a matrix of the coefficients of the constraint functions:");
+        for (int i = 0; i < m; i++) {
+            for (int j = 0; j < n; j++) {
+                A[i][j] = scanner.nextDouble();
+            }
+        }
+
+        double[] b = new double[m];
+        System.out.println("Enter a vector of the right-hand side values:");
+        for (int i = 0; i < m; i++) {
+            b[i] = scanner.nextDouble();
+        }
+
+        System.out.print(problemType + " z = ");
+        for (int i = 0; i < n; i++) {
+            System.out.print(C[i] + " * x" + (i + 1));
+            if (i < n - 1) {
+                System.out.print(" + ");
+            }
+        }
+        System.out.println();
+
+        System.out.println("subject to the constraints:");
+        for (int i = 0; i < m; i++) {
+            System.out.print("     ");
+            for (int j = 0; j < n; j++) {
+                System.out.print(A[i][j] + " * x" + (j + 1));
+                if (j < n - 1) {
+                    System.out.print(" + ");
+                }
+            }
+            System.out.println(" <= " + b[i]);
+        }
+
+        SimplexMethod(C,A,b);
+
+        scanner.close();
+    }
+
+    public static void SimplexMethod(double[] C, double[][] A, double[] b){
+        //Some simplex logic...
     }
 }
