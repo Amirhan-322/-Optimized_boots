@@ -1,121 +1,108 @@
-// This code is a Java implementation of the Simplex method for linear programming.
+import java.util.Arrays;
 import java.util.Scanner;
-import java.util.ArrayList;
 
 public class Main {
-    static class Tableau {
-        float[][] data;
 
-        Tableau(int rows, int columns) {
-            data = new float[rows][columns];
+    private static final double EPSILON = 1e-6;
+
+    public static class Tableau {
+        private final double[][] data;
+
+        public Tableau(double[][] data) {
+            this.data = data;
         }
 
-        float[] getRow(int index) {
-            return data[index];
-        }
-
-        void setRow(int index, float[] row) {
-            data[index] = row;
-        }
-
-        float getElement(int rowIndex, int columnIndex) {
-            return data[rowIndex][columnIndex];
-        }
-
-        void setElement(int rowIndex, int columnIndex, float value) {
-            data[rowIndex][columnIndex] = value;
+        public double getElement(int row, int col) {
+            return data[row][col];
         }
     }
 
-    static Tableau recSimplexMethod(Tableau oldTableau, int numVariables, int numConstraints) {
-        boolean hasNegative = false;
-        for (int i = 0; i < numVariables; i++) {
-            if (oldTableau.getElement(0, i) < 0) {
-                hasNegative = true;
-                break;
-            }
-        }
-        if (!hasNegative) {
-            return oldTableau;
-        } else {
-            Tableau newTableau = oldTableau;
-            // Find pivot column
-            int pivotColumn = 0;
-            for (int i = 0; i < numVariables; i++) {
-                if (oldTableau.getElement(0, i) < oldTableau.getElement(0, pivotColumn)) {
-                    pivotColumn = i;
-                }
-            }
-            // Find solution ratio and store it in the last column of newTableau
-            boolean isUnbounded = true;
-            for (int i = 0; i < numConstraints; i++) {
-                if (oldTableau.getElement(i + 1, pivotColumn) > 0) {
-                    newTableau.setElement(i + 1, 2 * numVariables, oldTableau.getElement(i + 1, numVariables) / oldTableau.getElement(i + 1, pivotColumn));
-                    isUnbounded = false;
-                } else {
-                    newTableau.setElement(i + 1, 2 * numVariables, Float.MAX_VALUE);
-                }
-            }
-            if (isUnbounded) {
-                System.out.println("The problem is unbounded.");
-                System.exit(0);
-            }
-            // Find pivot row using the smallest ratio
-            int pivotRow = 1;
-            for (int i = 0; i < numConstraints; i++) {
-                if (newTableau.getElement(i + 1, 2 * numVariables) < newTableau.getElement(pivotRow, 2 * numVariables)) {
-                    pivotRow = i + 1;
-                }
+    public static Tableau simplexMethod(float[] C, float[][] A, float[] B, int numVariables, int numConstraints) {
+        double[][] tableau = initializeTableau(C, A, B, numVariables, numConstraints);
+
+        while (true) {
+            int enteringVariable = findEnteringVariable(tableau);
+            if (enteringVariable == -1) {
+                return new Tableau(tableau);
             }
 
-            // Divide every variable in pivot row by pivot element
-            float pivotElement = newTableau.getElement(pivotRow, pivotColumn);
-            for (int i = 0; i <= numVariables; i++) {
-                newTableau.setElement(pivotRow, i, newTableau.getElement(pivotRow, i) / pivotElement);
+            int leavingVariable = findLeavingVariable(tableau, enteringVariable);
+            if (leavingVariable == -1) {
+                return null;
             }
 
-            // Subtract pivot row from every other row
-            for (int i = 0; i <= numConstraints; i++) {
-                if (i != pivotRow) {
-                    float factor = newTableau.getElement(i, pivotColumn);
-                    for (int j = 0; j <= numVariables; j++) {
-                        newTableau.setElement(i, j, newTableau.getElement(i, j) - factor * newTableau.getElement(pivotRow, j));
-                    }
-                }
-            }
-            return recSimplexMethod(newTableau, numVariables, numConstraints);
+            pivot(tableau, leavingVariable, enteringVariable);
         }
     }
 
-    static Tableau simplexMethod(float[] C, float[][] A, float[] B, int numVariables, int numConstraints) {
-        Tableau tableau = new Tableau(numConstraints + 1, 2 * numVariables + 1);
+    private static double[][] initializeTableau(float[] C, float[][] A, float[] B, int numVariables, int numConstraints) {
+        double[][] tableau = new double[numConstraints + 1][numVariables + numConstraints + 1];
 
-        // Initialize z-row
         for (int i = 0; i < numVariables; i++) {
-            tableau.setElement(0, i, -C[i]);
+            tableau[0][i] = -C[i];
         }
 
-        // Initialize all constraint rows, their solutions and slack variables
         for (int i = 0; i < numConstraints; i++) {
             for (int j = 0; j < numVariables; j++) {
-                tableau.setElement(i + 1, j, A[i][j]);
+                tableau[i + 1][j] = A[i][j];
             }
-            // Add identity matrix for slack variables
-            for (int j = numVariables; j < 2 * numVariables; j++) {
-                if (j == numVariables + i) {
-                    tableau.setElement(i + 1, j, 1);
-                } else {
-                    tableau.setElement(i + 1, j, 0);
+        }
+
+        for (int i = 0; i < numConstraints; i++) {
+            tableau[i + 1][numVariables + i] = 1;
+        }
+
+        for (int i = 0; i < numConstraints; i++) {
+            tableau[i + 1][numVariables + numConstraints] = B[i];
+        }
+
+        return tableau;
+    }
+    private static int findEnteringVariable(double[][] tableau) {
+        int enteringVariable = -1;
+        double minCoefficient = 0;
+        for (int i = 0; i < tableau[0].length - 1; i++) {
+            if (tableau[0][i] < minCoefficient) {
+                minCoefficient = tableau[0][i];
+                enteringVariable = i;
+            }
+        }
+        return enteringVariable;
+    }
+
+    private static int findLeavingVariable(double[][] tableau, int enteringVariable) {
+        int leavingVariable = -1;
+        double minRatio = Double.MAX_VALUE;
+        for (int i = 1; i < tableau.length; i++) {
+            if (tableau[i][enteringVariable] > EPSILON) {
+                double ratio = tableau[i][tableau[i].length - 1] / tableau[i][enteringVariable];
+                if (ratio < minRatio) {
+                    minRatio = ratio;
+                    leavingVariable = i;
                 }
             }
-            tableau.setElement(i + 1, numVariables, B[i]);
         }
-        return recSimplexMethod(tableau, numVariables, numConstraints);
+        return leavingVariable;
+    }
+
+    private static void pivot(double[][] tableau, int leavingVariable, int enteringVariable) {
+        double pivotElement = tableau[leavingVariable][enteringVariable];
+
+        for (int j = 0; j < tableau[leavingVariable].length; j++) {
+            tableau[leavingVariable][j] /= pivotElement;
+        }
+
+        for (int i = 0; i < tableau.length; i++) {
+            if (i != leavingVariable) {
+                double factor = tableau[i][enteringVariable];
+                for (int j = 0; j < tableau[i].length; j++) {
+                    tableau[i][j] -= factor * tableau[leavingVariable][j];
+                }
+            }
+        }
     }
 
     public static void main(String[] args) {
-        // if maximization, boolean max = true
-        // if value = false, multiply every value in vector C by -1
         boolean isMaximization = true;
         Scanner scanner = new Scanner(System.in);
         int numVariables, numConstraints;
@@ -140,7 +127,6 @@ public class Main {
                 C[i] *= -1;
             }
         }
-        // printing the problem
         if (isMaximization) {
             System.out.print("Maximize z = ");
         } else {
@@ -167,24 +153,26 @@ public class Main {
         }
         Tableau result = simplexMethod(C, A, B, numVariables, numConstraints);
 
-        // Extract the solution vector
-        float[] solution = new float[numVariables];
-        for (int i = 1; i <= numConstraints; i++) {
-            for (int j = 0; j < numVariables; j++) {
-                if (result.getElement(i, j) == 1) {
-                    solution[j] = result.getElement(i, numVariables);
-                    break;
+        if (result == null) {
+            System.out.println("The problem is unbounded.");
+        } else {
+            float[] solution = new float[numVariables];
+            for (int i = 1; i <= numConstraints; i++) {
+                for (int j = 0; j < numVariables; j++) {
+                    if (result.getElement(i, j) == 1) {
+                        solution[j] = (float) result.getElement(i, numVariables + numConstraints);
+                        break;
+                    }
                 }
             }
-        }
 
-        // Print the solution vector
-        System.out.println("Solution:");
-        for (int i = 0; i < solution.length; i++) {
-            System.out.println("x" + (i + 1) + " = " + solution[i]);
+            System.out.println("Solution:");
+            for (int i = 0; i < solution.length; i++) {
+                System.out.println("x" + (i + 1) + " = " + solution[i]);
+            }
+            System.out.println("Value: ");
+            System.out.println(result.getElement(0, numVariables + numConstraints));
         }
-        System.out.println("Value: ");
-        System.out.println(result.getElement(0, numVariables));
         scanner.close();
     }
 }
