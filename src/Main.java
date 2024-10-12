@@ -154,7 +154,7 @@ public class Main {
         Tableau result = simplexMethod(C, A, B, numVariables, numConstraints);
 
         if (result == null) {
-            System.out.println("The problem is unbounded.");
+            System.out.println("The method is not applicable!");
         } else {
             float[] solution = new float[numVariables];
             for (int i = 1; i <= numConstraints; i++) {
